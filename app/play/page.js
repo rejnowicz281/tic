@@ -1,28 +1,36 @@
 "use client";
 
 import Board from "@/components/Board";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import uniqid from "uniqid";
 
 export default function PlayPage() {
     const [hits, setHits] = useState([...Array(3)].map(() => [...Array(3)].map(() => null)));
 
     const player1 = {
-        id: 1,
+        id: uniqid(),
         name: "Player 1",
         sign: "X",
     };
 
     const player2 = {
-        id: 2,
+        id: uniqid(),
         name: "Player 2",
         sign: "O",
     };
 
-    const [currentPlayerId, setCurrentPlayerId] = useState(player1.id);
+    const [currentPlayer, setCurrentPlayer] = useState();
 
     const currentGameStatus = getGameStatus();
 
-    const currentPlayer = getCurrentPlayer();
+    // randomize first player
+    useEffect(() => {
+        function getRandomPlayer() {
+            return Math.random() < 0.5 ? player1 : player2;
+        }
+
+        setCurrentPlayer(getRandomPlayer());
+    }, []);
 
     function getWinner() {
         // check rows
@@ -79,14 +87,8 @@ export default function PlayPage() {
         return sign === player1.sign ? player1 : sign === player2.sign ? player2 : null;
     }
 
-    function getCurrentPlayer() {
-        return currentPlayerId === player1.id ? player1 : currentPlayerId === player2.id ? player2 : null;
-    }
-
     function switchPlayer() {
-        setCurrentPlayerId(
-            currentPlayerId === player1.id ? player2.id : currentPlayerId === player2.id ? player1.id : null
-        );
+        setCurrentPlayer(currentPlayer.id === player1.id ? player2 : currentPlayer.id === player2.id ? player1 : null);
     }
 
     function onCellClick(row, column) {
@@ -104,9 +106,11 @@ export default function PlayPage() {
         <div>
             <h1>Play Page</h1>
             {currentGameStatus.status === "PLAYING" ? (
-                <p>
-                    Current Player: {currentPlayer.name}, {currentPlayer.sign}
-                </p>
+                currentPlayer && (
+                    <p>
+                        Current Player: {currentPlayer.name}, {currentPlayer.sign}
+                    </p>
+                )
             ) : currentGameStatus.status === "WIN" ? (
                 <p>Winner: {currentGameStatus.winner.name}</p>
             ) : currentGameStatus.status === "DRAW" ? (
