@@ -1,10 +1,16 @@
 "use client";
 
 import Board from "@/components/Board";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import uniqid from "uniqid";
 
 export default function PlayPage() {
+    const queryParams = useSearchParams();
+
+    const smartAI = queryParams.get("smart") === "true";
+    const randomAI = queryParams.get("random") === "true";
+
     const [hits, setHits] = useState([...Array(3)].map(() => [...Array(3)].map(() => null)));
 
     const player1Ref = useRef({
@@ -15,14 +21,13 @@ export default function PlayPage() {
 
     const player2Ref = useRef({
         id: uniqid(),
-        name: "Player 2",
+        name: smartAI ? "Smart Bot" : randomAI ? "Random Bot" : "Player 2",
         sign: "O",
+        ai: smartAI || randomAI,
     });
 
     const player1 = player1Ref.current;
     const player2 = player2Ref.current;
-
-    console.log(player1, player2);
 
     const [currentPlayer, setCurrentPlayer] = useState();
 
@@ -36,6 +41,34 @@ export default function PlayPage() {
 
         setCurrentPlayer(getRandomPlayer());
     }, []);
+
+    // check if AI should make a move
+    useEffect(() => {
+        if (currentPlayer?.ai) {
+            if (smartAI) {
+                makeSmartMove();
+            } else if (randomAI) {
+                makeRandomMove();
+            }
+        }
+    }, [currentPlayer]);
+
+    function makeSmartMove() {
+        makeRandomMove(); // TODO
+    }
+
+    function makeRandomMove() {
+        if (isBoardFull() || currentGameStatus.status !== "PLAYING") return;
+
+        while (true) {
+            const row = Math.floor(Math.random() * 3);
+            const column = Math.floor(Math.random() * 3);
+
+            const move = makeMove(row, column);
+
+            if (move.success || move.error == "NO_CURRENT_PLAYER") break;
+        }
+    }
 
     function getWinner() {
         // check rows
@@ -96,31 +129,48 @@ export default function PlayPage() {
         setCurrentPlayer(currentPlayer.id === player1.id ? player2 : currentPlayer.id === player2.id ? player1 : null);
     }
 
-    function onCellClick(row, column) {
+    function makeMove(row, column) {
+        // make move as current player
+
+        if (!currentPlayer) return { success: false, error: "NO_CURRENT_PLAYER" };
+
         const newHits = [...hits];
+
         const cellValue = newHits[row][column];
 
-        if (cellValue === null && currentGameStatus.status === "PLAYING") {
-            newHits[row][column] = currentPlayer.sign;
-            setHits(newHits);
-            switchPlayer();
-        }
+        if (cellValue !== null) return { success: false, error: "CELL_OCCUPIED" };
+
+        newHits[row][column] = currentPlayer.sign;
+        setHits(newHits);
+        switchPlayer();
+
+        return { success: true };
+    }
+
+    function onCellClick(row, column) {
+        if (currentGameStatus.status !== "PLAYING") return;
+
+        makeMove(row, column);
     }
 
     return (
         <div>
             <h1>Play Page</h1>
             {currentGameStatus.status === "PLAYING" ? (
-                currentPlayer && (
-                    <p>
-                        Current Player: {currentPlayer.name}, {currentPlayer.sign}
-                    </p>
+                smartAI || randomAI ? (
+                    <p>You are playing against an AI. ({smartAI ? "Smart" : randomAI ? "Random" : "Unknown Type"})</p>
+                ) : (
+                    <p>Current player: {currentPlayer?.name}</p>
                 )
             ) : currentGameStatus.status === "WIN" ? (
-                <p>Winner: {currentGameStatus.winner.name}</p>
+                <p>
+                    Winner:{" "}
+                    {(smartAI || randomAI) && !currentGameStatus.winner.ai ? "You" : currentGameStatus.winner.name}
+                </p>
             ) : currentGameStatus.status === "DRAW" ? (
                 <p>Draw</p>
             ) : null}
+            <button onClick={makeRandomMove}>Make random move</button>
             <Board hits={hits} onCellClick={onCellClick} />
         </div>
     );
