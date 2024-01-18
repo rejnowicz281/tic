@@ -1,9 +1,9 @@
 import css from "./index.module.css";
 
-export default function Cell({ content, onClick }) {
+export default function Cell({ content, onClick, disabled }) {
     return (
-        <div onClick={onClick} className={css.cell}>
+        <button disabled={disabled} onClick={onClick} className={css.cell}>
             {content}
-        </div>
+        </button>
     );
 }
