@@ -1,23 +1,28 @@
 "use client";
 
 import Board from "@/components/Board";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import uniqid from "uniqid";
 
 export default function PlayPage() {
     const [hits, setHits] = useState([...Array(3)].map(() => [...Array(3)].map(() => null)));
 
-    const player1 = {
+    const player1Ref = useRef({
         id: uniqid(),
         name: "Player 1",
         sign: "X",
-    };
+    });
 
-    const player2 = {
+    const player2Ref = useRef({
         id: uniqid(),
         name: "Player 2",
         sign: "O",
-    };
+    });
+
+    const player1 = player1Ref.current;
+    const player2 = player2Ref.current;
+
+    console.log(player1, player2);
 
     const [currentPlayer, setCurrentPlayer] = useState();
 
