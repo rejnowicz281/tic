@@ -4,7 +4,10 @@ import Board from "@/components/Board";
 import generatePlayerObject from "@/utils/generatePlayerObject";
 import getEmptyBoard from "@/utils/getEmptyBoard";
 import _getGameStatus from "@/utils/getGameStatus";
+import _hitCell from "@/utils/hitCell";
+import isBoardEmpty from "@/utils/isBoardEmpty";
 import _isBoardFull from "@/utils/isBoardFull";
+
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -32,25 +35,20 @@ export default function PlayPage() {
         setCurrentPlayer(getRandomPlayer());
     }, []);
 
-    // check if AI should make a move
-    useEffect(() => {
-        if (currentPlayer?.ai) {
-            if (smartAI) makeSmartMove();
-            else if (randomAI) makeRandomMove();
-        }
-    }, [currentPlayer]);
-
     if (!currentPlayer) return <p>Initializing...</p>;
+
+    // make sure AI makes first move if it's the first player (if board is empty)
+    if (currentPlayer.ai && isBoardEmpty(board)) makeAIMove(currentPlayer);
 
     function getRandomPlayer() {
         return Math.random() < 0.5 ? player1 : player2;
     }
 
-    function minimax(currentBoard, isMaximizing) {
+    function minimax(currentBoard, isMaximizing, playerMaximizing) {
         const gameStatus = _getGameStatus(currentBoard, player1, player2);
 
         if (gameStatus.status == "WIN") {
-            if (gameStatus.winner.id === currentPlayer.id) return 1;
+            if (gameStatus.winner.id === playerMaximizing.id) return 1;
             else return -1;
         } else if (gameStatus.status == "DRAW") return 0;
 
@@ -65,8 +63,8 @@ export default function PlayPage() {
                     if (currentBoard[i][j] === null) {
                         copiedBoard = JSON.parse(JSON.stringify(currentBoard));
 
-                        copiedBoard[i][j] = currentPlayer.sign;
-                        score = minimax(copiedBoard, false);
+                        copiedBoard[i][j] = playerMaximizing.sign;
+                        score = minimax(copiedBoard, false, playerMaximizing);
                         max_score = Math.max(max_score, score);
                     }
                 }
@@ -80,8 +78,8 @@ export default function PlayPage() {
                     if (currentBoard[i][j] === null) {
                         copiedBoard = JSON.parse(JSON.stringify(currentBoard));
 
-                        copiedBoard[i][j] = currentPlayer.id === player1.id ? player2.sign : player1.sign;
-                        score = minimax(copiedBoard, true);
+                        copiedBoard[i][j] = playerMaximizing.id === player1.id ? player2.sign : player1.sign;
+                        score = minimax(copiedBoard, true, playerMaximizing);
                         min_score = Math.min(min_score, score);
                     }
                 }
@@ -90,8 +88,8 @@ export default function PlayPage() {
         }
     }
 
-    function makeSmartMove() {
-        if (isBoardFull() || currentGameStatus.status !== "PLAYING") return;
+    function makeSmartMove(player = currentPlayer, playerSwitch = true) {
+        if (currentGameStatus.status !== "PLAYING" || isBoardFull()) return;
 
         let row;
         let column;
@@ -105,9 +103,9 @@ export default function PlayPage() {
                 if (board[i][j] === null) {
                     copiedBoard = JSON.parse(JSON.stringify(board));
 
-                    copiedBoard[i][j] = currentPlayer.sign;
+                    copiedBoard[i][j] = player.sign;
 
-                    score = minimax(copiedBoard, false);
+                    score = minimax(copiedBoard, false, player);
                     if (score > max_score) {
                         row = i;
                         column = j;
@@ -117,48 +115,44 @@ export default function PlayPage() {
             }
         }
 
-        const move = makeMove(row, column);
+        const res = makeMove(row, column, player.sign, playerSwitch);
 
-        console.log(move);
+        return res;
     }
 
-    function makeRandomMove() {
-        if (isBoardFull() || currentGameStatus.status !== "PLAYING") return;
+    function makeRandomMove(sign = currentPlayer.sign, playerSwitch = true) {
+        if (currentGameStatus.status !== "PLAYING" || isBoardFull()) return;
 
         while (true) {
             const row = Math.floor(Math.random() * 3);
             const column = Math.floor(Math.random() * 3);
 
-            const move = makeMove(row, column);
+            const res = makeMove(row, column, sign, playerSwitch);
 
-            console.log(move);
-
-            if (move.success || move.error == "NO_CURRENT_PLAYER") break;
+            if (res.success) return res;
         }
     }
 
     function onCellClick(row, column) {
-        if (currentGameStatus.status !== "PLAYING" || currentPlayer.ai) return;
+        if (currentGameStatus.status !== "PLAYING") return;
 
-        const move = makeMove(row, column);
-
-        console.log(move);
+        makeMove(row, column);
     }
 
-    function makeMove(row, column) {
-        // make move as current player
+    function makeMove(row, column, sign = currentPlayer.sign, playerSwitch = true) {
+        const res = hitCell(row, column, sign);
 
-        const newBoard = [...board];
+        if (res.success) {
+            setBoard(res.board);
+            if (playerSwitch) switchPlayer();
+        }
 
-        const cellValue = newBoard[row][column];
+        console.log(res);
+        return res;
+    }
 
-        if (cellValue !== null) return { success: false, error: "CELL_OCCUPIED" };
-
-        newBoard[row][column] = currentPlayer.sign;
-        setBoard(newBoard);
-        switchPlayer();
-
-        return { success: true, row, column, sign: currentPlayer.sign };
+    function hitCell(row, column, sign = currentPlayer.sign) {
+        return _hitCell([...board], row, column, sign);
     }
 
     function isBoardFull() {
@@ -170,12 +164,19 @@ export default function PlayPage() {
     }
 
     function switchPlayer() {
-        setCurrentPlayer(currentPlayer.id === player1.id ? player2 : currentPlayer.id === player2.id ? player1 : null);
+        const otherPlayer =
+            currentPlayer.id === player1.id ? player2 : currentPlayer.id === player2.id ? player1 : null;
+
+        if (otherPlayer.ai) makeAIMove(otherPlayer, false);
+        else setCurrentPlayer(otherPlayer);
+    }
+
+    function makeAIMove(player, playerSwitch = true) {
+        if (smartAI) makeSmartMove(player, playerSwitch);
+        else if (randomAI) makeRandomMove(player.sign, playerSwitch);
     }
 
     function reset() {
-        if (currentPlayer.ai && currentGameStatus.status === "PLAYING") return;
-
         setBoard(getEmptyBoard());
         setCurrentPlayer(getRandomPlayer());
     }
@@ -197,22 +198,8 @@ export default function PlayPage() {
             ) : currentGameStatus.status === "DRAW" ? (
                 <p>Draw</p>
             ) : null}
-            <button
-                onClick={() => {
-                    if (currentPlayer.ai) return;
-                    makeRandomMove();
-                }}
-            >
-                Make random move
-            </button>
-            <button
-                onClick={() => {
-                    if (currentPlayer.ai) return;
-                    makeSmartMove();
-                }}
-            >
-                Make smart move
-            </button>
+            <button onClick={() => makeRandomMove()}>Make random move</button>
+            <button onClick={() => makeSmartMove()}>Make smart move</button>
             <button onClick={reset}>Reset</button>
             <Board board={board} onCellClick={onCellClick} />
         </div>
