@@ -174,6 +174,8 @@ export default function PlayPage() {
     }
 
     function reset() {
+        if (currentPlayer.ai && currentGameStatus.status === "PLAYING") return;
+
         setBoard(getEmptyBoard());
         setCurrentPlayer(getRandomPlayer());
     }
