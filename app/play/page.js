@@ -1,12 +1,12 @@
 "use client";
 
 import Board from "@/components/Board";
+import generatePlayerObject from "@/utils/generatePlayerObject";
 import getEmptyBoard from "@/utils/getEmptyBoard";
 import _getGameStatus from "@/utils/getGameStatus";
 import _isBoardFull from "@/utils/isBoardFull";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import uniqid from "uniqid";
 
 export default function PlayPage() {
     const queryParams = useSearchParams();
@@ -15,25 +15,16 @@ export default function PlayPage() {
     const randomAI = queryParams.get("random") === "true";
 
     const [board, setBoard] = useState(getEmptyBoard());
+    const [currentPlayer, setCurrentPlayer] = useState(null);
 
-    const player1Ref = useRef({
-        id: uniqid(),
-        name: "Player 1",
-        sign: "X",
-    });
+    const player1Ref = useRef(generatePlayerObject("Player 1", "X"));
 
-    const player2Ref = useRef({
-        id: uniqid(),
-        name: smartAI ? "Smart Bot" : randomAI ? "Random Bot" : "Player 2",
-        sign: "O",
-        ai: smartAI || randomAI,
-    });
+    const player2Ref = useRef(
+        generatePlayerObject(smartAI ? "Smart Bot" : randomAI ? "Random Bot" : "Player 2", "O", smartAI || randomAI)
+    );
 
     const player1 = player1Ref.current;
     const player2 = player2Ref.current;
-
-    const [currentPlayer, setCurrentPlayer] = useState();
-
     const currentGameStatus = getGameStatus();
 
     // randomize first player
@@ -44,13 +35,12 @@ export default function PlayPage() {
     // check if AI should make a move
     useEffect(() => {
         if (currentPlayer?.ai) {
-            if (smartAI) {
-                makeSmartMove();
-            } else if (randomAI) {
-                makeRandomMove();
-            }
+            if (smartAI) makeSmartMove();
+            else if (randomAI) makeRandomMove();
         }
     }, [currentPlayer]);
+
+    if (!currentPlayer) return <p>Initializing...</p>;
 
     function getRandomPlayer() {
         return Math.random() < 0.5 ? player1 : player2;
@@ -148,7 +138,7 @@ export default function PlayPage() {
     }
 
     function onCellClick(row, column) {
-        if (currentGameStatus.status !== "PLAYING") return;
+        if (currentGameStatus.status !== "PLAYING" || currentPlayer.ai) return;
 
         const move = makeMove(row, column);
 
@@ -157,8 +147,6 @@ export default function PlayPage() {
 
     function makeMove(row, column) {
         // make move as current player
-
-        if (!currentPlayer) return { success: false, error: "NO_CURRENT_PLAYER" };
 
         const newBoard = [...board];
 
@@ -195,9 +183,9 @@ export default function PlayPage() {
             <h1>Play Page</h1>
             {currentGameStatus.status === "PLAYING" ? (
                 smartAI || randomAI ? (
-                    <p>You are playing against an AI. ({smartAI ? "Smart" : randomAI ? "Random" : "Unknown Type"})</p>
+                    <p>You are playing against an AI. ({smartAI ? "Smart" : randomAI ? "Random" : "NULL"})</p>
                 ) : (
-                    <p>Current player: {currentPlayer?.name}</p>
+                    <p>Current player: {currentPlayer.name}</p>
                 )
             ) : currentGameStatus.status === "WIN" ? (
                 <p>
@@ -207,9 +195,23 @@ export default function PlayPage() {
             ) : currentGameStatus.status === "DRAW" ? (
                 <p>Draw</p>
             ) : null}
-            <button onClick={makeRandomMove}>Make random move</button>
-            <button onClick={makeSmartMove}>Make smart move</button>
-            {currentGameStatus.status !== "PLAYING" && <button onClick={reset}>Reset</button>}
+            <button
+                onClick={() => {
+                    if (currentPlayer.ai) return;
+                    makeRandomMove();
+                }}
+            >
+                Make random move
+            </button>
+            <button
+                onClick={() => {
+                    if (currentPlayer.ai) return;
+                    makeSmartMove();
+                }}
+            >
+                Make smart move
+            </button>
+            <button onClick={reset}>Reset</button>
             <Board board={board} onCellClick={onCellClick} />
         </div>
     );
