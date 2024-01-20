@@ -6,13 +6,16 @@ export default function Home() {
             <h1>welcome to tic</h1>
             <p>choose your gameplay</p>
             <div>
-                <Link href="/play?smart=true">you vs smart ai (recommended)</Link>
+                <Link href="/play?smart=true">play with smart ai (recommended)</Link>
             </div>
             <div>
-                <Link href="/play?random=true">you vs random ai</Link>
+                <Link href="/play?random=true">play with random ai</Link>
             </div>
             <div>
-                <Link href="/play">you vs friend</Link>
+                <Link href="/online">play online</Link>
+            </div>
+            <div>
+                <Link href="/play">play with a friend</Link>
             </div>
         </>
     );
