@@ -34,7 +34,7 @@ export default function OnlinePage() {
             } else if (data.count === 2) {
                 console.log("Two players ready");
                 setInviteState(`Users connected - ${channel.members.count}. Ready to start`);
-                // router.push(`/play?game=${invite || queryInvite}`);
+                router.push(`/play?game=${invite || queryInvite}`);
             } else {
                 console.log("Waiting for another player");
                 setInviteState(`Users connected - ${channel.members.count}. Waiting for another player`);
@@ -47,7 +47,7 @@ export default function OnlinePage() {
             if (channel.members.count === 2) {
                 console.log("Two players ready");
                 setInviteState(`Users connected - ${channel.members.count}. Ready to start`);
-                // router.push(`/play?game=${invite || queryInvite}`);
+                router.push(`/play?game=${invite || queryInvite}`);
             }
         });
 
