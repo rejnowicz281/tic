@@ -21,7 +21,7 @@ export default function PlayPage() {
     // online game config
     const game = queryParams.get("game");
     const [connectionStatus, setConnectionStatus] = useState(game ? "WAITING" : null);
-    const channelName = connectionStatus ? `presence-${game}` : null;
+    const channelNameRef = useRef(`presence-${game}`);
     const channelRef = useRef(null);
 
     const [board, setBoard] = useState(getEmptyBoard());
@@ -39,13 +39,22 @@ export default function PlayPage() {
     );
 
     const currentGameStatus = getGameStatus();
+    const channelName = channelNameRef.current;
 
     // randomize first player
     useEffect(() => {
         setCurrentPlayer(getRandomPlayer());
     }, []);
 
-    // set up pusher channel
+    // unsubscribe from channel if connection status is null and a channel is already set up
+    useEffect(() => {
+        if (!connectionStatus && channelRef.current) {
+            pusherClient.unsubscribe(channelName);
+            channelRef.current = null;
+        }
+    }, [connectionStatus]);
+
+    // set up pusher channel (if not already set up)
     useEffect(() => {
         if (channelRef.current || !connectionStatus) return;
 
@@ -112,7 +121,7 @@ export default function PlayPage() {
 
         channel.bind("pusher:member_removed", (member) => {
             console.log("member removed", member);
-            setConnectionStatus("WAITING");
+            if (channel.members.count !== 2) setConnectionStatus("WAITING");
         });
 
         channel.bind("pusher:subscription_error", (data) => {
