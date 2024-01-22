@@ -1,161 +1,62 @@
 "use client";
 
 import Board from "@/components/Board";
-import { pusherClient } from "@/pusher";
+import useOnlineGame from "@/hooks/useOnlineGame";
 import generatePlayerObject from "@/utils/generatePlayerObject";
 import getEmptyBoard from "@/utils/getEmptyBoard";
 import _getGameStatus from "@/utils/getGameStatus";
 import _hitCell from "@/utils/hitCell";
 import _isBoardEmpty from "@/utils/isBoardEmpty";
 import _isBoardFull from "@/utils/isBoardFull";
+import minimax from "@/utils/minimax";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function PlayPage() {
     const queryParams = useSearchParams();
 
     const smartAI = queryParams.get("smart") === "true";
     const randomAI = queryParams.get("random") === "true";
-
-    // online game config
-    const game = queryParams.get("game");
-    const [connectionStatus, setConnectionStatus] = useState(game ? "WAITING" : null);
-    const channelNameRef = useRef(`presence-${game}`);
-    const channelRef = useRef(null);
+    const gameId = queryParams.get("game");
 
     const [board, setBoard] = useState(getEmptyBoard());
     const [currentPlayer, setCurrentPlayer] = useState(null);
 
+    // not ai, always client (initially)
     const [player1, setPlayer1] = useState(generatePlayerObject("Player 1", "X", false, true));
 
+    // if ai on, player 2 is ai. if ai is on or game is online, player 2 is not client (initially)
     const [player2, setPlayer2] = useState(
         generatePlayerObject(
             smartAI ? "Smart Bot" : randomAI ? "Random Bot" : "Player 2",
             "O",
             smartAI || randomAI,
-            game || smartAI || randomAI ? false : true
+            gameId || smartAI || randomAI ? false : true
         )
     );
-
-    const currentGameStatus = getGameStatus();
-    const channelName = channelNameRef.current;
 
     // randomize first player
     useEffect(() => {
         setCurrentPlayer(getRandomPlayer());
     }, []);
 
-    // unsubscribe from channel if connection status is null and a channel is already set up
-    useEffect(() => {
-        if (!connectionStatus && channelRef.current) {
-            pusherClient.unsubscribe(channelName);
-            channelRef.current = null;
-        }
-    }, [connectionStatus]);
+    // set up online game - if game id is null, it's an offline game and connectionStatus is null
+    const { connectionStatus, channel } = useOnlineGame(
+        gameId,
+        currentPlayer,
+        setCurrentPlayer,
+        switchPlayer,
+        board,
+        setBoard,
+        player1,
+        setPlayer1,
+        player2,
+        setPlayer2
+    );
 
-    // set up pusher channel (if not already set up)
-    useEffect(() => {
-        if (channelRef.current || !connectionStatus) return;
-
-        const channel = pusherClient.subscribe(channelName);
-
-        channelRef.current = channel;
-    }, []);
-
-    useEffect(() => {
-        const channel = channelRef.current;
-
-        if (!channel || !currentPlayer) return;
-
-        channel.bind("pusher:member_added", (member) => {
-            console.log("member added", member);
-
-            if (channel.members.count === 2) {
-                const gameInfo = {
-                    board,
-                    currentPlayer,
-                    player1,
-                    player2,
-                };
-                const infoTrigger = channel.trigger("client-starting-info-sync", gameInfo);
-                if (infoTrigger) {
-                    setConnectionStatus("READY");
-                    console.log("Other player connected, sending starting info", gameInfo, infoTrigger);
-                } else {
-                    setConnectionStatus(null);
-                    console.log("Error sending starting info");
-                }
-            }
-        });
-
-        channel.bind("client-board-move", (data) => {
-            console.log("move received", data);
-            setBoard(data.board);
-            switchPlayer();
-        });
-
-        return () => {
-            channel.unbind("client-board-move");
-            channel.unbind("pusher:member_added");
-        };
-    }, [currentPlayer]);
-
-    useEffect(() => {
-        const channel = channelRef.current;
-
-        if (!channel) return;
-
-        channel.bind("pusher:subscription_succeeded", (data) => {
-            console.log("subscription succeeded", data);
-
-            if (data.count > 2) {
-                console.log("Too many players connected to this channel");
-                setConnectionStatus(null);
-            } else if (data.count === 2) {
-                console.log("Two players ready, waiting for starting info sync");
-            } else {
-                console.log("Not enough players connected to this channel");
-            }
-        });
-
-        channel.bind("pusher:member_removed", (member) => {
-            console.log("member removed", member);
-            if (channel.members.count !== 2) setConnectionStatus("WAITING");
-        });
-
-        channel.bind("pusher:subscription_error", (data) => {
-            console.log("subscription error", data);
-            setConnectionStatus(null);
-        });
-
-        channel.bind("client-starting-info-sync", (data) => {
-            console.log("starting info sync received", data);
-
-            setBoard(data.board);
-            setCurrentPlayer({ ...data.currentPlayer, client: !data.currentPlayer.client });
-            setPlayer2({ ...data.player2, client: !data.player2.client });
-            setPlayer1({ ...data.player1, client: !data.player1.client });
-            setConnectionStatus("READY");
-        });
-
-        channel.bind("client-info-sync", (data) => {
-            console.log("info sync received", data);
-
-            if (data.board) setBoard(data.board);
-            if (data.currentPlayer) setCurrentPlayer({ ...data.currentPlayer, client: !data.currentPlayer.client });
-            if (data.player1) setPlayer2({ ...data.player2, client: !data.player2.client });
-            if (data.player2) setPlayer1({ ...data.player1, client: !data.player1.client });
-        });
-
-        return () => {
-            channel.unbind("pusher:subscription_succeeded");
-            channel.unbind("pusher:subscription_error");
-            channel.unbind("pusher:member_removed");
-            channel.unbind("client-starting-info-sync");
-            channel.unbind("client-info-sync");
-        };
-    }, []);
+    // get current game status - win, draw or playing
+    const currentGameStatus = getGameStatus();
 
     if (!currentPlayer) return <p>Initializing...</p>;
 
@@ -164,50 +65,6 @@ export default function PlayPage() {
 
     function getRandomPlayer() {
         return Math.random() < 0.5 ? player1 : player2;
-    }
-
-    function minimax(currentBoard, isMaximizing, playerMaximizing) {
-        const gameStatus = _getGameStatus(currentBoard, player1, player2);
-
-        if (gameStatus.status == "WIN") {
-            if (gameStatus.winner.id === playerMaximizing.id) return 1;
-            else return -1;
-        } else if (gameStatus.status == "DRAW") return 0;
-
-        let copiedBoard;
-        let score;
-
-        if (isMaximizing) {
-            let max_score = -Infinity;
-
-            for (let i = 0; i < currentBoard.length; i++) {
-                for (let j = 0; j < currentBoard[i].length; j++) {
-                    if (currentBoard[i][j] === null) {
-                        copiedBoard = JSON.parse(JSON.stringify(currentBoard));
-
-                        copiedBoard[i][j] = playerMaximizing.sign;
-                        score = minimax(copiedBoard, false, playerMaximizing);
-                        max_score = Math.max(max_score, score);
-                    }
-                }
-            }
-            return max_score;
-        } else {
-            let min_score = Infinity;
-
-            for (let i = 0; i < currentBoard.length; i++) {
-                for (let j = 0; j < currentBoard[i].length; j++) {
-                    if (currentBoard[i][j] === null) {
-                        copiedBoard = JSON.parse(JSON.stringify(currentBoard));
-
-                        copiedBoard[i][j] = playerMaximizing.id === player1.id ? player2.sign : player1.sign;
-                        score = minimax(copiedBoard, true, playerMaximizing);
-                        min_score = Math.min(min_score, score);
-                    }
-                }
-            }
-            return min_score;
-        }
     }
 
     async function makeSmartMove(player = currentPlayer, playerSwitch = true) {
@@ -227,7 +84,7 @@ export default function PlayPage() {
 
                     copiedBoard[i][j] = player.sign;
 
-                    score = minimax(copiedBoard, false, player);
+                    score = minimax(copiedBoard, false, player, player.id === player1.id ? player2 : player1);
                     if (score > max_score) {
                         row = i;
                         column = j;
@@ -255,14 +112,6 @@ export default function PlayPage() {
         }
     }
 
-    async function onCellClick(row, column) {
-        if (currentGameStatus.status !== "PLAYING" || connectionStatus === "WAITING" || !currentPlayer.client) return;
-
-        const res = await makeMove(row, column);
-
-        return res;
-    }
-
     async function makeMove(row, column, sign = currentPlayer.sign, playerSwitch = true) {
         const res = hitCell(row, column, sign);
 
@@ -271,8 +120,6 @@ export default function PlayPage() {
             if (playerSwitch) switchPlayer();
 
             if (connectionStatus === "READY") {
-                const channel = channelRef.current;
-
                 const info = {
                     board: res.board,
                 };
@@ -285,6 +132,20 @@ export default function PlayPage() {
 
         console.log(res);
         return res;
+    }
+
+    function onRandomMoveClick() {
+        if (currentPlayer.client) makeRandomMove();
+    }
+
+    function onSmartMoveClick() {
+        if (currentPlayer.client) makeSmartMove();
+    }
+
+    function onCellClick(row, column) {
+        if (currentGameStatus.status !== "PLAYING" || connectionStatus === "WAITING" || !currentPlayer.client) return;
+
+        makeMove(row, column);
     }
 
     function hitCell(row, column, sign = currentPlayer.sign) {
@@ -307,6 +168,7 @@ export default function PlayPage() {
         const otherPlayer =
             currentPlayer.id === player1.id ? player2 : currentPlayer.id === player2.id ? player1 : null;
 
+        // if other player is ai, make ai move, else switch player
         if (otherPlayer.ai) makeAIMove(otherPlayer, false);
         else setCurrentPlayer(otherPlayer);
     }
@@ -324,8 +186,6 @@ export default function PlayPage() {
         setCurrentPlayer(randomPlayer);
 
         if (connectionStatus === "READY") {
-            const channel = channelRef.current;
-
             const info = {
                 board: emptyBoard,
                 currentPlayer: randomPlayer,
@@ -352,20 +212,8 @@ export default function PlayPage() {
             ) : currentGameStatus.status === "DRAW" ? (
                 <p>Draw</p>
             ) : null}
-            <button
-                onClick={() => {
-                    if (currentPlayer.client) makeRandomMove();
-                }}
-            >
-                Make random move
-            </button>
-            <button
-                onClick={() => {
-                    if (currentPlayer.client) makeSmartMove();
-                }}
-            >
-                Make smart move
-            </button>
+            <button onClick={onRandomMoveClick}>Make random move</button>
+            <button onClick={onSmartMoveClick}>Make smart move</button>
             {connectionStatus ? (
                 currentGameStatus.status !== "PLAYING" && <button onClick={reset}>Reset</button>
             ) : (
