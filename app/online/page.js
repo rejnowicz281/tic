@@ -16,6 +16,11 @@ export default function OnlinePage() {
     const [inviteState, setInviteState] = useState("");
     const channelName = invite ? `presence-${invite}` : queryInvite ? `presence-${queryInvite}` : null;
 
+    function redirectToGame() {
+        pusherClient.unsubscribe(channelName);
+        router.push(`/play?game=${invite || queryInvite}`);
+    }
+
     useEffect(() => {
         if (!channelName) return generateInvite();
 
@@ -34,7 +39,7 @@ export default function OnlinePage() {
             } else if (data.count === 2) {
                 console.log("Two players ready");
                 setInviteState(`Users connected - ${channel.members.count}. Ready to start`);
-                router.push(`/play?game=${invite || queryInvite}`);
+                redirectToGame();
             } else {
                 console.log("Waiting for another player");
                 setInviteState(`Users connected - ${channel.members.count}. Waiting for another player`);
@@ -47,7 +52,7 @@ export default function OnlinePage() {
             if (channel.members.count === 2) {
                 console.log("Two players ready");
                 setInviteState(`Users connected - ${channel.members.count}. Ready to start`);
-                router.push(`/play?game=${invite || queryInvite}`);
+                redirectToGame();
             }
         });
 
