@@ -12,7 +12,7 @@ export default function Home() {
                 <Link href="/play?random=true">play with random ai</Link>
             </div>
             <div>
-                <Link href="/online">play online</Link>
+                <Link href="/play?online=true">play online</Link>
             </div>
             <div>
                 <Link href="/play">play with a friend</Link>
