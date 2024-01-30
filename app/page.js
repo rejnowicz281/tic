@@ -15,6 +15,9 @@ export default function Home() {
                 <Link href="/play?online=true">play online</Link>
             </div>
             <div>
+                <Link href="/games">see available online games</Link>
+            </div>
+            <div>
                 <Link href="/play">play with a friend</Link>
             </div>
         </>
