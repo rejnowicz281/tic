@@ -46,25 +46,21 @@ export default function useOnlineGame() {
         }
     }
 
-    useEffect(() => {
-        if (!gameID) setGameID(uniqid());
-    }, []);
-
     // set up pusher channel
     useEffect(() => {
-        if (channelRef.current || !gameID) return;
+        if (!gameID) return setGameID(uniqid());
 
         const channel = pusherClient.subscribe(channelName);
-
+        setConnectionStatus("WAITING");
         channelRef.current = channel;
+
+        return () => unsubscribe(null);
     }, [gameID]);
 
     useEffect(() => {
         const channel = channelRef.current;
 
-        if (!channel || !gameID) return;
-
-        channel.bind("pusher:member_added", (member) => {
+        channel?.bind("pusher:member_added", (member) => {
             console.log("member added", member);
 
             if (channel.members.count === 2) {
@@ -97,24 +93,22 @@ export default function useOnlineGame() {
             }
         });
 
-        channel.bind("client-board-move", (data) => {
+        channel?.bind("client-board-move", (data) => {
             console.log("move received", data);
             setBoard(data.board);
             switchPlayer();
         });
 
         return () => {
-            channel.unbind("client-board-move");
-            channel.unbind("pusher:member_added");
+            channel?.unbind("client-board-move");
+            channel?.unbind("pusher:member_added");
         };
-    }, [currentPlayer, gameID]);
+    }, [currentPlayer]);
 
     useEffect(() => {
         const channel = channelRef.current;
 
-        if (!channel || !gameID) return;
-
-        channel.bind("pusher:subscription_succeeded", (data) => {
+        channel?.bind("pusher:subscription_succeeded", (data) => {
             console.log("subscription succeeded", data);
 
             if (data.count > 2) {
@@ -127,17 +121,17 @@ export default function useOnlineGame() {
             }
         });
 
-        channel.bind("pusher:member_removed", (member) => {
+        channel?.bind("pusher:member_removed", (member) => {
             console.log("member removed", member);
             if (channel.members.count !== 2) setConnectionStatus("WAITING");
         });
 
-        channel.bind("pusher:subscription_error", (data) => {
+        channel?.bind("pusher:subscription_error", (data) => {
             console.log("subscription error", data);
             unsubscribe("ERROR");
         });
 
-        channel.bind("client-starting-info-sync", (data) => {
+        channel?.bind("client-starting-info-sync", (data) => {
             console.log("starting info sync received", data);
 
             setBoard(data.board);
@@ -147,7 +141,7 @@ export default function useOnlineGame() {
             setConnectionStatus("READY");
         });
 
-        channel.bind("client-info-sync", (data) => {
+        channel?.bind("client-info-sync", (data) => {
             console.log("info sync received", data);
 
             if (data.board) setBoard(data.board);
@@ -157,13 +151,13 @@ export default function useOnlineGame() {
         });
 
         return () => {
-            channel.unbind("pusher:subscription_succeeded");
-            channel.unbind("pusher:subscription_error");
-            channel.unbind("pusher:member_removed");
-            channel.unbind("client-starting-info-sync");
-            channel.unbind("client-info-sync");
+            channel?.unbind("pusher:subscription_succeeded");
+            channel?.unbind("pusher:subscription_error");
+            channel?.unbind("pusher:member_removed");
+            channel?.unbind("client-starting-info-sync");
+            channel?.unbind("client-info-sync");
         };
-    }, [gameID]);
+    }, []);
 
     return {
         connectionStatus,
