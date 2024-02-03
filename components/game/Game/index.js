@@ -42,7 +42,11 @@ export default function Game() {
     return (
         <div className="bg-gray-800 flex-col flex text-white flex-1">
             <div className="aspect-square h-screen flex flex-col gap-3 p-10">
-                <Board board={board} onCellClick={onCellClick} />
+                <Board
+                    clickDisabled={currentGameStatus?.status === "PLAYING" && !currentPlayer.client}
+                    board={board}
+                    onCellClick={onCellClick}
+                />
 
                 <div className="flex flex-col gap-3 items-center">
                     {connectionStatus === "READY" ? (
@@ -65,14 +69,16 @@ export default function Game() {
                         </button>
                     ) : null}
                     <button
-                        className="rounded max-w-screen-sm w-full flex items-center justify-center gap-3 bg-gray-700 p-3 font-bold text-gray-300 shadow-sm hover:bg-gray-600"
+                        disabled={currentGameStatus?.status === "PLAYING" && !currentPlayer.client}
+                        className="disabled:bg-[#3C5061] rounded max-w-screen-sm w-full flex items-center justify-center gap-3 bg-gray-700 p-3 font-bold text-gray-300 shadow-sm hover:bg-gray-600"
                         onClick={onSmartMoveClick}
                     >
                         <LuBrain className="text-3xl" />
                         Make Smart Move
                     </button>
                     <button
-                        className="rounded max-w-screen-sm w-full flex items-center justify-center gap-3 bg-gray-700 p-3 font-bold text-gray-300 shadow-sm hover:bg-gray-600"
+                        disabled={currentGameStatus?.status === "PLAYING" && !currentPlayer.client}
+                        className="disabled:bg-[#3C5061] rounded max-w-screen-sm w-full flex items-center justify-center gap-3 bg-gray-700 p-3 font-bold text-gray-300 shadow-sm hover:bg-gray-600"
                         onClick={onRandomMoveClick}
                     >
                         <LuDice1 className="text-3xl" />
