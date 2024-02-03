@@ -41,6 +41,22 @@ export default function Game() {
 
     return (
         <div className="bg-gray-800 flex-col flex text-white flex-1">
+            <div className="flex gap-4 flex-col pt-10 items-center px-10">
+                {(player1.ai || player2.ai) && <p className="text-2xl">You are playing against an AI.</p>}
+                {gameID && <p className="text-xl">Game ID: {gameID}</p>}
+                {connectionStatus && (
+                    <p className="text-2xl">
+                        Connection status: <span className="font-bold">{connectionStatus}</span>
+                    </p>
+                )}
+                <Link
+                    href="/"
+                    className="rounded max-w-screen-sm w-full flex items-center justify-center gap-3 bg-gray-700 p-3 font-bold text-gray-300 shadow-sm hover:bg-gray-600"
+                >
+                    <RiHome2Line className="text-3xl" />
+                    Back To Menu
+                </Link>
+            </div>
             <div className="aspect-square h-screen flex flex-col gap-3 p-10">
                 <Board
                     clickDisabled={currentGameStatus?.status === "PLAYING" && !currentPlayer.client}
@@ -96,23 +112,6 @@ export default function Game() {
                 ) : currentGameStatus?.status === "DRAW" ? (
                     <p className="text-2xl text-center font-bold">Draw</p>
                 ) : null}
-            </div>
-
-            <div className="flex gap-4 flex-col pb-4 items-center px-10">
-                {(player1.ai || player2.ai) && <p className="text-2xl">You are playing against an AI.</p>}
-                {gameID && <p className="text-xl">Game ID: {gameID}</p>}
-                {connectionStatus && (
-                    <p className="text-2xl">
-                        Connection status: <span className="font-bold">{connectionStatus}</span>
-                    </p>
-                )}
-                <Link
-                    href="/"
-                    className="rounded max-w-screen-sm w-full flex items-center justify-center gap-3 bg-gray-700 p-3 font-bold text-gray-300 shadow-sm hover:bg-gray-600"
-                >
-                    <RiHome2Line className="text-3xl" />
-                    Back To Menu
-                </Link>
             </div>
         </div>
     );
