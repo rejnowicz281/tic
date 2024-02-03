@@ -103,7 +103,7 @@ export default function useOnlineGame() {
             channel?.unbind("client-board-move");
             channel?.unbind("pusher:member_added");
         };
-    }, [currentPlayer]);
+    }, [currentPlayer, gameID]);
 
     useEffect(() => {
         const channel = channelRef.current;
@@ -157,7 +157,7 @@ export default function useOnlineGame() {
             channel?.unbind("client-starting-info-sync");
             channel?.unbind("client-info-sync");
         };
-    }, []);
+    }, [gameID]);
 
     return {
         connectionStatus,
