@@ -9,7 +9,10 @@ export default function RefreshButton() {
     return (
         <button
             className="rounded max-w-[400px] w-full flex items-center justify-center gap-3 bg-gray-700 p-3 font-bold text-gray-300 shadow-sm hover:bg-gray-600"
-            onClick={() => router.refresh()}
+            onClick={() => {
+                console.log("Refreshing...");
+                router.refresh();
+            }}
         >
             <IoIosRefresh className="text-2xl" />
             Refresh
