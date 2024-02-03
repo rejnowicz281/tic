@@ -90,7 +90,9 @@ export default function Game() {
                         Current player: {currentPlayer.name} ({currentPlayer.sign})
                     </p>
                 ) : currentGameStatus?.status === "WIN" ? (
-                    <p className="text-2xl text-center font-bold">Winner: {currentGameStatus.winner.name}</p>
+                    <p className="text-2xl text-center font-bold">
+                        Winner: {currentGameStatus.winner.name} ({currentGameStatus.winner.sign})
+                    </p>
                 ) : currentGameStatus?.status === "DRAW" ? (
                     <p className="text-2xl text-center font-bold">Draw</p>
                 ) : null}
