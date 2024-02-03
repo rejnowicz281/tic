@@ -6,6 +6,8 @@ import Link from "next/link";
 import { IoIosAddCircleOutline } from "react-icons/io";
 import { RiHome2Line } from "react-icons/ri";
 
+export const dynamic = "force-dynamic";
+
 export default async function GamesPage() {
     const res = await pusherServer.get({
         path: "/channels",
