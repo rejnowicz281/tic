@@ -1,9 +1,8 @@
 import Cell from "./Cell";
-import css from "./index.module.css";
 
 export default function Board({ board, onCellClick = () => {}, clickDisabled }) {
     return (
-        <div className={css.board}>
+        <div className="mx-auto max-w-screen-sm w-full aspect-square grid grid-cols-3 grid-rows-3 gap-2">
             {[...Array(3)].map((_, row) =>
                 [...Array(3)].map((_, column) => (
                     <Cell
